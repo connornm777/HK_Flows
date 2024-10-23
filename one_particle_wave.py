@@ -1,30 +1,35 @@
 import numpy as np
 import cupy as cp
+import os
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from scipy.optimize import curve_fit
+from dotenv import load_dotenv
+
+# Load environment variables (if any)
+load_dotenv()
 
 # Enable LaTeX rendering in Matplotlib
 plt.rcParams['text.usetex'] = True
 
-# Constants (set to 1 as per your request)
-sigma2 = 1.0       # σ^2
-Lambda = 1.0       # Λ
-prefactor = 1.0 / ( 32 * ( cp.pi) ** ( 2) * Lambda ** 4)
-
-def compute_P(p0, x0, theta_i, num_points=30):
+def compute_P(p0, x0, theta_i, sigma2=1.0, Lambda=1.0, num_points=30):
     """
-    Compute P^{(1)}(D) for given p0, x0, and theta_i using vectorized operations.
+    Compute P^{(1)}(D) for given p0, x0, theta_i, sigma2, and Lambda.
 
     Parameters:
     - p0: float, initial momentum
     - x0: float, initial position away from detector
     - theta_i: float, angle of incidence in radians
+    - sigma2: float, σ^2 parameter
+    - Lambda: float, Λ parameter
     - num_points: int, number of quadrature points for integration
 
     Returns:
     - P: float, computed probability
     """
+    # Compute prefactor based on Lambda
+    prefactor = 1.0 / (32 * (cp.pi) ** 2 * Lambda ** 4)
+
     # Integration ranges
     phi_min, phi_max = 0, 2 * cp.pi
     p_min, p_max = 0, 10  # Adjust p_max as needed
@@ -112,7 +117,7 @@ def compute_P(p0, x0, theta_i, num_points=30):
     P = cp.asnumpy(P)
     return P
 
-def plot_P_general(p0_values=None, x0_values=None, theta_i_values=None, num_points=30):
+def plot_P_general(p0_values=None, x0_values=None, theta_i_values=None, sigma2_values=[1.0], Lambda_values=[1.0], num_points=30, file_out="output"):
     """
     General plotting function for P^{(1)}(D).
 
@@ -120,6 +125,8 @@ def plot_P_general(p0_values=None, x0_values=None, theta_i_values=None, num_poin
     - p0_values: array or scalar, values of p0 to use
     - x0_values: array or scalar, values of x0 to use
     - theta_i_values: array or scalar, values of theta_i to use
+    - sigma2_values: list or array, values of sigma2 to use (default [1.0])
+    - Lambda_values: list or array, values of Lambda to use (default [1.0])
     - num_points: int, number of quadrature points for integration
     """
     # Determine which variables are varying
@@ -138,65 +145,69 @@ def plot_P_general(p0_values=None, x0_values=None, theta_i_values=None, num_poin
             variables[var] = defaults[var]
             constant_vars[var] = defaults[var]
 
+    # Ensure sigma2_values and Lambda_values are lists or arrays
+    if not isinstance(sigma2_values, (list, np.ndarray)):
+        sigma2_values = [sigma2_values]
+    if not isinstance(Lambda_values, (list, np.ndarray)):
+        Lambda_values = [Lambda_values]
+
+    # Check if sigma2 and Lambda are constants (not being varied)
+    sigma2_constant = len(sigma2_values) == 1
+    Lambda_constant = len(Lambda_values) == 1
+
     if len(varying_vars) == 1:
         # Line plot
         var_name, var_values = next(iter(varying_vars.items()))
-        var_values = cp.asnumpy(cp.array(var_values))
-        P_values = []
-        total_values = len(var_values)
-        # Use tqdm for progress bar
-        for i, value in enumerate(tqdm(var_values, desc=f"Computing P vs {var_name}")):
-            args = {**constant_vars, var_name: value}
-            P = compute_P(p0=args['p0'], x0=args['x0'], theta_i=args['theta_i'], num_points=num_points)
-            P_values.append(P)
-        # Plotting
-        plt.figure(figsize=(8, 6))
-        plt.plot(var_values, P_values)
-
-
-        # Define a new fitting function with a shift parameter b
-        def fit_func(x, a, b):
-            return a / (x**2 + b)
-
-        # Calculate weights that increase with x to emphasize fitting the tail
-        weights = var_values**2
-
-        # Fit the model to the data
-        popt, _ = curve_fit(fit_func, var_values, P_values, p0=[1.0, 1.0], sigma=weights)
-        # Generate fitted values
-        fitted_vals = fit_func(var_values, *popt)
-
-        plt.plot(var_values, fitted_vals, label=f'Fit: $\\frac{{{popt[0]:.2f}}}{{x^2 + {popt[1]:.2f}}}$', linestyle='--')
-
-
-      # Axis labels with LaTeX
+        var_values = np.array(var_values)
         xlabel_dict = {
             'p0': r'$p_0$',
             'x0': r'$x_0$',
             'theta_i': r'$\theta_i$ (radians)'
         }
+        plt.figure(figsize=(8, 6))
+        for sigma2 in sigma2_values:
+            for Lambda in Lambda_values:
+                P_values = []
+                label = f"$\sigma^2$={sigma2}, $\Lambda$={Lambda}"
+                # Use tqdm for progress bar
+                for value in tqdm(var_values, desc=f"Computing P vs {var_name} ({label})"):
+                    args = {**constant_vars, var_name: value}
+                    P = compute_P(p0=args['p0'], x0=args['x0'], theta_i=args['theta_i'],
+                                  sigma2=sigma2, Lambda=Lambda, num_points=num_points)
+                    P_values.append(P)
+                # Plotting
+                plt.plot(var_values, P_values, label=label)
         plt.xlabel(xlabel_dict[var_name])
         plt.ylabel(r'$P^{(1)}(D)$')
         # Title
-        plt.xlim(min(var_values), max(var_values))
-        plt.ylim(min(P_values), max(P_values))
         constants_str = ', '.join([f"{xlabel_dict[k]} = {v}" for k, v in constant_vars.items()])
         plt.title(f"Probability vs {xlabel_dict[var_name]} ({constants_str})")
         plt.grid(True)
-        plt.show()
+        plt.legend()
+        plt.savefig(os.path.join(os.getenv("HK_FLOW_FILE", "."), f"{file_out}.png"))
 
-    elif len(varying_vars) == 2:
+    elif len(varying_vars) == 2 and sigma2_constant and Lambda_constant:
         # Heatmap
         var_names = list(varying_vars.keys())
-        var_values1 = cp.asnumpy(cp.array(varying_vars[var_names[0]]))
-        var_values2 = cp.asnumpy(cp.array(varying_vars[var_names[1]]))
+        var_values1 = np.array(varying_vars[var_names[0]])
+        var_values2 = np.array(varying_vars[var_names[1]])
         P_values = np.zeros((len(var_values1), len(var_values2)))
         total_values1, total_values2 = len(var_values1), len(var_values2)
+        sigma2 = sigma2_values[0]  # Use the constant value
+        Lambda = Lambda_values[0]  # Use the constant value
+
+        xlabel_dict = {
+            'p0': r'$p_0$',
+            'x0': r'$x_0$',
+            'theta_i': r'$\theta_i$ (radians)'
+        }
+
         # Use tqdm for progress bar
         for i, value1 in enumerate(tqdm(var_values1, desc=f"Computing P vs {var_names[0]} and {var_names[1]}")):
             for j, value2 in enumerate(var_values2):
                 args = {**constant_vars, var_names[0]: value1, var_names[1]: value2}
-                P = compute_P(p0=args['p0'], x0=args['x0'], theta_i=args['theta_i'], num_points=num_points)
+                P = compute_P(p0=args['p0'], x0=args['x0'], theta_i=args['theta_i'],
+                              sigma2=sigma2, Lambda=Lambda, num_points=num_points)
                 P_values[i, j] = P
         # Plotting
         plt.figure(figsize=(8, 6))
@@ -204,19 +215,16 @@ def plot_P_general(p0_values=None, x0_values=None, theta_i_values=None, num_poin
         plt.pcolormesh(X, Y, P_values, shading='auto', cmap='viridis')
         plt.colorbar(label=r'$P^{(1)}(D)$')
         # Axis labels with LaTeX
-        xlabel_dict = {
-            'p0': r'$p_0$',
-            'x0': r'$x_0$',
-            'theta_i': r'$\theta_i$ (radians)'
-        }
         plt.xlabel(xlabel_dict[var_names[1]])
         plt.ylabel(xlabel_dict[var_names[0]])
         # Title
         constants_str = ', '.join([f"{xlabel_dict[k]} = {v}" for k, v in constant_vars.items()])
+        constants_str += f", $\sigma^2$ = {sigma2}, $\Lambda$ = {Lambda}"
         plt.title(f"Probability Heatmap ({constants_str})")
-        plt.show()
+        plt.savefig(os.path.join(os.getenv("HK_FLOW_FILE", "."), f"{file_out}_heatmap.png"))
+
     else:
-        print("Error: Please vary one or two variables.")
+        print("Error: Please vary one or two variables, and ensure sigma2 and Lambda are constants when plotting a heatmap.")
 
 # Example usage:
 
@@ -224,13 +232,20 @@ if __name__ == "__main__":
     # Set the number of quadrature points (increase for higher accuracy)
     num_points = 50  # Adjust as needed
 
-    # Example: P vs x0 from 0 to 5, theta_i=0, p0=0
-    n = 50  # Number of points in the variable range
+    # Example 1: P vs x0 from 0 to 10, theta_i=0, p0=0 (Line Plot)
+    n = 20  # Number of points in the variable range
     x0_vals = np.linspace(0, 10, n)
-    theta_i_vals = np.linspace(0, np.pi/2, n)
-    p0_vals = np.linspace(0, 10.0, n)
-    #x0_vals = 1.0
-    theta_i_vals = 0
-    p0_vals = 0
-    # Compute and plot P vs x0
-    plot_P_general(p0_values=p0_vals, x0_values=x0_vals, theta_i_values=theta_i_vals, num_points=num_points)
+    theta_i_vals = np.linspace(0, np.pi/2, n)  # Single value
+    p0_vals = 10.0       # Single value
+
+    file_out = "pvxt"
+
+    # Different sigma2 and Lambda values
+    sigma2_vals = [0.0]
+    Lambda_vals = [1.0]  # You can add more Lambda values if desired
+
+    # Compute and plot P vs x0 for different sigma2 and Lambda values (Line Plot)
+    plot_P_general(p0_values=p0_vals, x0_values=x0_vals, theta_i_values=theta_i_vals,
+                   sigma2_values=sigma2_vals, Lambda_values=Lambda_vals, num_points=num_points, file_out=file_out)
+
+
