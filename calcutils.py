@@ -3,7 +3,6 @@ import cupy as cp
 import os
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from scipy.optimize import curve_fit
 from dotenv import load_dotenv
 
 # Load environment variables (if any)
@@ -28,7 +27,7 @@ def compute_P(p0, x0, theta_i, sigma2=1.0, Lambda=1.0, num_points=30):
     - P: float, computed probability
     """
     # Compute prefactor based on Lambda
-    prefactor = 1.0 / (32 * (cp.pi) ** 2 * Lambda ** 4)
+    prefactor = (1.0+4*sigma2*(Lambda**2)) / (32 * (cp.pi) ** 2 * Lambda ** 4)
 
     # Integration ranges
     phi_min, phi_max = 0, 2 * cp.pi
@@ -221,31 +220,12 @@ def plot_P_general(p0_values=None, x0_values=None, theta_i_values=None, sigma2_v
         constants_str = ', '.join([f"{xlabel_dict[k]} = {v}" for k, v in constant_vars.items()])
         constants_str += f", $\sigma^2$ = {sigma2}, $\Lambda$ = {Lambda}"
         plt.title(f"Probability Heatmap ({constants_str})")
-        plt.savefig(os.path.join(os.getenv("HK_FLOW_FILE", "."), f"{file_out}_heatmap.png"))
+        plt.savefig(os.path.join(os.getenv("HK_FLOW_FILE", "."), f"{file_out}.png"))
 
     else:
         print("Error: Please vary one or two variables, and ensure sigma2 and Lambda are constants when plotting a heatmap.")
 
-# Example usage:
 
-if __name__ == "__main__":
-    # Set the number of quadrature points (increase for higher accuracy)
-    num_points = 50  # Adjust as needed
 
-    # Example 1: P vs x0 from 0 to 10, theta_i=0, p0=0 (Line Plot)
-    n = 20  # Number of points in the variable range
-    x0_vals = np.linspace(0, 10, n)
-    theta_i_vals = np.linspace(0, np.pi/2, n)  # Single value
-    p0_vals = 10.0       # Single value
-
-    file_out = "pvxt"
-
-    # Different sigma2 and Lambda values
-    sigma2_vals = [0.0]
-    Lambda_vals = [1.0]  # You can add more Lambda values if desired
-
-    # Compute and plot P vs x0 for different sigma2 and Lambda values (Line Plot)
-    plot_P_general(p0_values=p0_vals, x0_values=x0_vals, theta_i_values=theta_i_vals,
-                   sigma2_values=sigma2_vals, Lambda_values=Lambda_vals, num_points=num_points, file_out=file_out)
 
 
