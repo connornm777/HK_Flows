@@ -2,10 +2,10 @@ from calcutils import plot_P_general
 import numpy as np
 
 num_points = 40
-n = 20
-x0_vals = np.linspace(0, 10., n)
+n = 100
+x0_vals = np.linspace(0, 5., n)
 theta_i_vals = 0
-p0_vals = np.linspace(0, 10., n)
+p0_vals = np.linspace(0, 5., n)
 file_out = "pvxp"
 sigma2_vals = [0.0]
 Lambda_vals = [1.0]

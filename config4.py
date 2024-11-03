@@ -1,13 +1,13 @@
 from calcutils import plot_P_general
 import numpy as np
 
-num_points = 40
-n = 20
-x0_vals = np.linspace(0, 10., n)
+num_points = 50
+n = 100
+x0_vals = 1.0
 theta_i_vals = 0
 p0_vals = np.linspace(0, 10., n)
-file_out = "pvxp"
-sigma2_vals = [0.0]
+file_out = "pvp"
+sigma2_vals = [0.0, 0.5, 1.0]
 Lambda_vals = [1.0]
 
 # Compute and plot P vs x0 for different sigma2 and Lambda values (Line Plot)
