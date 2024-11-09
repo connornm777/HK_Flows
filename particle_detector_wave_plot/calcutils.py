@@ -183,7 +183,7 @@ def plot_P_general(p0_values=None, x0_values=None, theta_i_values=None, sigma2_v
         plt.title(f"Probability vs {xlabel_dict[var_name]} ({constants_str})")
         plt.grid(True)
         plt.legend()
-        plt.savefig(os.path.join(os.getenv("HK_FLOW_FILE", "."), f"{file_out}.png"))
+        plt.savefig(os.path.join(os.getenv("HK_FLOW_FILE", ".."), f"{file_out}.png"))
 
     elif len(varying_vars) == 2 and sigma2_constant and Lambda_constant:
         # Heatmap
@@ -220,7 +220,7 @@ def plot_P_general(p0_values=None, x0_values=None, theta_i_values=None, sigma2_v
         constants_str = ', '.join([f"{xlabel_dict[k]} = {v}" for k, v in constant_vars.items()])
         constants_str += f", $\sigma^2$ = {sigma2}, $\Lambda$ = {Lambda}"
         plt.title(f"Probability Heatmap ({constants_str})")
-        plt.savefig(os.path.join(os.getenv("HK_FLOW_FILE", "."), f"{file_out}.png"))
+        plt.savefig(os.path.join(os.getenv("HK_FLOW_FILE", ".."), f"{file_out}.png"))
 
     else:
         print("Error: Please vary one or two variables, and ensure sigma2 and Lambda are constants when plotting a heatmap.")
