@@ -27,7 +27,7 @@ def compute_P(p0, x0, theta_i, sigma2=1.0, Lambda=1.0, num_points=30):
     - P: float, computed probability
     """
     # Compute prefactor based on Lambda
-    prefactor = (1.0+4*sigma2*(Lambda**2)) / (32 * (cp.pi) ** 2 * Lambda ** 4)
+    prefactor = (1.0+4*sigma2*(Lambda**2)*0) / (32 * (cp.pi) ** 2 * Lambda ** 4)
 
     # Integration ranges
     phi_min, phi_max = 0, 2 * cp.pi
@@ -212,7 +212,7 @@ def plot_P_general(p0_values=None, x0_values=None, theta_i_values=None, sigma2_v
         plt.figure(figsize=(8, 6))
         X, Y = np.meshgrid(var_values2, var_values1)
         plt.pcolormesh(X, Y, P_values, shading='auto', cmap='viridis')
-        plt.colorbar(label=r'$P^{(1)}(D)$')
+        plt.colorbar(label=r'$P(D)$')
         # Axis labels with LaTeX
         plt.xlabel(xlabel_dict[var_names[1]])
         plt.ylabel(xlabel_dict[var_names[0]])

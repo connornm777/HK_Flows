@@ -9,9 +9,9 @@ import matplotlib.pyplot as plt
 g = 1.0  # Coupling constant
 
 # Lambda parameters (positive real constants)
-Lambda1 = 1.0
-Lambda2 = 1.0
-Lambda3 = 1.0
+Lambda1 = 0.1
+Lambda2 = 0.1
+Lambda3 = 0.1
 
 # Momentum vectors (can be varied)
 p01 = cp.array([1.0, 0.0, 0.0])
@@ -31,7 +31,7 @@ num_points = 500  # Adjust for desired accuracy
 
 # Parameters to vary and hold constant
 vary_parameters = {
-    'm': np.linspace(0.1, 2.0, 50),
+    'm': np.linspace(0.1, 5.0, 100),
     # Add other parameters here if needed
 }
 
